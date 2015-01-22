@@ -1,87 +1,73 @@
-//external file doing the jquery stuff
-$(document).ready(
-    function(){
-    //alert("clicked");
-});
-    $("#pingButton").click(
-    function(){
-    //$("#messageText").text("Button Clicked"); disabled for the time being
-    
-                           });
-
-
-//stolen websocket code
+var keyExceptions=new Array();
 jQuery(function($){
-       
        if (!("WebSocket" in window)) {
        alert("Your browser does not support web sockets");
        }else{
        setup();
        }
-       
-       
        function setup(){
-       
-       // Note: You have to change the host var
-       // if your client runs on a different machine than the websocket server
-       
-       var host = "ws://localhost:8888/";           //ws + localhost + portnum + uri
-       var socket = new WebSocket(host);            //currently failing to connect to websocket onthis line
-       //console.log("socket status: " + socket.readyState);
-       
-       var $txt = $("#inputField");       //    original=  var $txt = $("#data");
-       var $btnSend = $("#pingButton");       //original=        var $btnSend = $("#sendtext");
-
-       
-       $txt.focus();
-       
-       // event handlers for UI
-       $btnSend.on('click',function(){
-                   //alert("send button clicked");
-                   var text = $txt.val();
+       var host = "ws://localhost:8888/";
+       var socket = new WebSocket(host);
+       var $key=$("#keyField");
+       var $txt = $("#textField");
+       var $submitForm = $("#submitForm");
+              $submitForm.submit(function(event){
+                event.preventDefault();
+                var key=$key.val();
+                var text = $txt.val();
+                var protoJson={
+                                 "key":key,
+                                 "value":text,
+                                 "action":"write",
+                                 "sendTo":"#messageText3"
+                                 };
+                var sendFile=JSON.stringify(protoJson);
                    if(text == ""){
                    return;
                    }
-                   socket.send(text);
-                   $txt.val("");
+                keyExceptions[key]="#messageText3";
+                   socket.send(sendFile);
+                   //$txt.val("");
                    });
-       
-       /*$txt.keypress(function(evt){
-                     if(evt.which == 13){
-                     $btnSend.click();
-                     }
-                     });*/
-       
-       // event handlers for websocket
+       var $readForm=$("#readForm");
+       $readForm.submit(
+                        function(event){
+            event.preventDefault();
+                        var key=$("#readKeyField").val();
+                        var protoJson={
+                        "key":key,
+                        "action":"read",
+                        "sendTo":"#readTextField"
+                        };
+                        var sendFile=JSON.stringify(protoJson);
+                        socket.send(sendFile);
+            });
+
        if(socket){
-       
        socket.onopen = function(){
-       //alert("connection opened....");
        }
-       
        socket.onmessage = function(msg){
-       showServerResponse(msg.data);
-       //$("#messageText").text(msg);         //testing, remove if needed
-       //alert(msg);
+       //checks for sendTo, if no send to id of key
+       //it should in the future find the thing with the id ==key
+       //console.log(msg.data);
+       var data=JSON.parse(msg.data);
+       console.log(data);
+       var value=data['value'];
+       var key=data['key'];
+       var sendTo=data['sendTo'];
+       var event=data['event'];
+       console.log("key-"+key+" is changed to "+value);
+       if(event=='valChanged'){
+       sendTo=keyExceptions[key];
+       $(sendTo).text(value);
+       }else if(event=="read"){
+       $(sendTo).val(value);
        }
        
-       socket.onclose = function(){
-       //alert("connection closed....");
-       showServerResponse("The connection has been closed.");
        }
+       socket.onclose = function(){
+       console.log("socket Closed");}
        
        }else{
        console.log("invalid socket");
-       }
-       
-       function showServerResponse(txt){
-       var p = document.createElement('p');
-       p.innerHTML = txt;
-       //original =  document.getElementById('output').appendChild(p);
-       alert(txt);
-       }	
-       
-       
-       }
-       
-       });
+       }}});
